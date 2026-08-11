@@ -68,3 +68,4 @@ class OCRManager {
 
     fun close() = recognizer.close()
 }
+

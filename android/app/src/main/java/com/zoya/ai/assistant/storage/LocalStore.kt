@@ -81,3 +81,4 @@ class LocalStore(context: Context) {
         const val APP_PROFILES = "app_profiles"
     }
 }
+

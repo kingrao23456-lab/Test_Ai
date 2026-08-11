@@ -97,3 +97,4 @@ class GestureExecutor(private val service: AccessibilityService) {
         }
     }
 }
+

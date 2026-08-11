@@ -90,3 +90,4 @@ class ZoyaAccessibilityService : AccessibilityService() {
         fun isEnabled(): Boolean = instance != null
     }
 }
+

@@ -40,3 +40,4 @@ class ConfirmActionActivity : Activity() {
         const val EXTRA_RESULT = "confirmed"
     }
 }
+

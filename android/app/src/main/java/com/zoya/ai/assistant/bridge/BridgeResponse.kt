@@ -36,3 +36,4 @@ data class BridgeResult(
         fun unsupported(message: String) = BridgeResult(ResultStatus.UNSUPPORTED, message)
     }
 }
+

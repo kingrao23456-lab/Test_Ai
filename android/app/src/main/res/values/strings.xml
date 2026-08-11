@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Zoya AI Assistant</string>
     <string name="title_activity_main">Zoya AI Assistant</string>
@@ -6,8 +6,9 @@
     <string name="custom_url_scheme">com.zoya.ai.assistant</string>
 
     <string name="accessibility_service_description">Lets Zoya read on-screen elements and perform taps, swipes and typing that you explicitly ask it to, so it can automate tasks on your behalf. It never acts without your instruction.</string>
-    <string name="accessibility_status_enabled">Accessibility Service: ENABLED ✓\nZoya can automate on-screen actions.</string>
-    <string name="accessibility_status_disabled">Accessibility Service: DISABLED ✕\nEnable it below so Zoya can automate on-screen actions.</string>
+    <string name="accessibility_status_enabled">Accessibility Service: ENABLED\nZoya can automate on-screen actions.</string>
+    <string name="accessibility_status_disabled">Accessibility Service: DISABLED\nEnable it below so Zoya can automate on-screen actions.</string>
     <string name="open_accessibility_settings">Open Accessibility Settings</string>
     <string name="done">Done</string>
 </resources>
+

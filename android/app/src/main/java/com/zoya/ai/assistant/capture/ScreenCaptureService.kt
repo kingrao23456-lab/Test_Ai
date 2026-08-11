@@ -127,3 +127,4 @@ class ScreenCaptureService : Service() {
         private const val NOTIF_ID = 5501
     }
 }
+

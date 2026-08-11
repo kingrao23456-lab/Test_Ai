@@ -80,3 +80,4 @@ class CameraController(private val context: Context) {
         )
     }
 }
+

@@ -9,3 +9,4 @@
     android:notificationTimeout="80"
     android:packageNames=""
     android:settingsActivity="com.zoya.ai.assistant.ui.PermissionSetupActivity" />
+

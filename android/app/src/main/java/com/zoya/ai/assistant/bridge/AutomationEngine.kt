@@ -118,3 +118,4 @@ class AutomationEngine(private val context: Context) {
         return if (service.globalHome()) BridgeResult.success() else BridgeResult.failure("System rejected home action")
     }
 }
+
