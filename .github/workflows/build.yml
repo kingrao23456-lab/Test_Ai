@@ -37,7 +37,10 @@ jobs:
 
       - name: Capacitor sync android
         run: npx cap sync android
-
+        
+      - name: Remove unused cordova plugins module
+        run: sed -i "/capacitor-cordova-android-plugins/d" android/capacitor.settings.gradle
+        
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
