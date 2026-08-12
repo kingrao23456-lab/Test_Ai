@@ -383,13 +383,7 @@ export function useLiveSession() {
         }
       });
 
-      let sessionPromise: Promise<any>;
-      try {
-        sessionPromise = ai.live.connect(createSessionConfig("gemini-3.1-flash-live-preview"));
-      } catch (e) {
-        console.warn("Primary model failed, falling back to gemini-2.0-flash-exp:", e);
-        sessionPromise = ai.live.connect(createSessionConfig("gemini-2.0-flash-exp"));
-      }
+      const sessionPromise: Promise<any> = ai.live.connect(createSessionConfig("gemini-3.1-flash-live-preview"));
 
       audioStreamerRef.current = new AudioStreamer((base64) => {
         sessionPromise.then((session) => {
