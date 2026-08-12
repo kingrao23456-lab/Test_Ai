@@ -6,10 +6,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.webkit.PermissionRequest
-import android.webkit.WebChromeClient
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.getcapacitor.BridgeActivity
+import com.getcapacitor.BridgeWebChromeClient
 import com.zoya.ai.assistant.bridge.ZoyaBridgePlugin
 import com.zoya.ai.assistant.capture.ScreenCaptureService
 
@@ -21,26 +21,34 @@ class MainActivity : BridgeActivity() {
         registerPlugin(ZoyaBridgePlugin::class.java)
         super.onCreate(savedInstanceState)
 
-        bridge.webView.webChromeClient = object : WebChromeClient() {
+        bridge.webView.webChromeClient = object : BridgeWebChromeClient(bridge) {
             override fun onPermissionRequest(request: PermissionRequest) {
-                runOnUiThread {
-                    val needsMic = request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
-                    val micGranted = ContextCompat.checkSelfPermission(
-                        this@MainActivity, Manifest.permission.RECORD_AUDIO
-                    ) == PackageManager.PERMISSION_GRANTED
-
-                    if (needsMic && !micGranted) {
-                        pendingWebRequest = request
-                        ActivityCompat.requestPermissions(
-                            this@MainActivity,
-                            arrayOf(Manifest.permission.RECORD_AUDIO),
-                            MIC_PERMISSION_CODE
-                        )
-                    } else {
-                        request.grant(request.resources)
-                    }
-                }
+                runOnUiThread { handleWebPermissionRequest(request) }
             }
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.RECORD_AUDIO), MIC_PERMISSION_CODE
+            )
+        }
+    }
+
+    private fun handleWebPermissionRequest(request: PermissionRequest) {
+        val needsMic = request.resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (needsMic && !micGranted) {
+            pendingWebRequest = request
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.RECORD_AUDIO), MIC_PERMISSION_CODE
+            )
+        } else {
+            request.grant(request.resources)
         }
     }
 
