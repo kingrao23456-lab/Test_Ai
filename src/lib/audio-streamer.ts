@@ -7,6 +7,7 @@ export class AudioStreamer {
   private source: MediaStreamAudioSourceNode | null = null;
   private nextStartTime: number = 0;
   private isPlaying: boolean = false;
+  private activeSources: AudioBufferSourceNode[] = [];
 
   constructor(private onAudioData: (base64: string) => void) {}
 
@@ -40,6 +41,7 @@ export class AudioStreamer {
     this.stream = null;
     this.processor = null;
     this.source = null;
+    this.activeSources = [];
   }
 
   playAudioChunk(base64: string) {
@@ -58,14 +60,26 @@ export class AudioStreamer {
     source.buffer = buffer;
     source.connect(this.audioContext.destination);
     
+    source.onended = () => {
+      this.activeSources = this.activeSources.filter(s => s !== source);
+    };
+    this.activeSources.push(source);
+
     const startTime = Math.max(this.nextStartTime, this.audioContext.currentTime);
     source.start(startTime);
     this.nextStartTime = startTime + buffer.duration;
   }
 
   stopPlayback() {
-    // To stop playback, we'd need to keep track of all active sources
-    // For now, we just reset the nextStartTime
+    // Actually stop all active sources for true interruption
+    this.activeSources.forEach(source => {
+      try {
+        source.stop();
+        source.disconnect();
+      } catch (e) {}
+    });
+    this.activeSources = [];
     this.nextStartTime = this.audioContext?.currentTime || 0;
   }
 }
+

@@ -67,6 +67,17 @@ export function useLiveSession() {
   const [isListening, setIsListening] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orbColor, setOrbColor] = useState<string>("default");
+  const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(false);
+  
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const next = !prev;
+      isMutedRef.current = next;
+      return next;
+    });
+  }, []);
   
   const [voicePersona, setVoicePersonaState] = useState<VoicePersona>(() => {
     if (typeof window !== "undefined") {
@@ -117,13 +128,14 @@ export function useLiveSession() {
           recentChats.map(c => `• Session on ${c.timestamp}: "${c.title}"\n  Summary: ${c.summary}\n  Snippet: ${c.transcript.slice(0, 250)}...`).join("\n\n");
       }
 
+      const SEARCH_INSTRUCTION = `\n\nYou are powered by Gemini intelligence.\nYou have access to Google Search. You must use Google Search to provide real-time information, up-to-date answers, and current date and time facts, ensuring accuracy and comprehensive knowledge across all user queries.`;
       const baseInstruction = (voicePersona === "alex"
         ? ALEX_SYSTEM_INSTRUCTION
         : voicePersona === "male"
         ? MALE_SYSTEM_INSTRUCTION
-        : FEMALE_SYSTEM_INSTRUCTION) + DEVELOPER_INSTRUCTION;
+        : FEMALE_SYSTEM_INSTRUCTION) + DEVELOPER_INSTRUCTION + SEARCH_INSTRUCTION;
       const fullSystemInstruction = baseInstruction + memoryContext + 
-        `\n\nREMINDER: You HAVE MEMORY of past conversations above! Use it naturally during conversation to show that you remember the user, their name, their preferences, and previous discussions!`;
+        `\n\nREMINDER: You HAVE MEMORY of past conversations above! Use it naturally during conversation to show that you remember the user, their name, their preferences, and previous discussions!\n\nIf the user asks to change your color or the orb's color, use the changeOrbColor tool to do it!`;
 
       const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
       
@@ -142,6 +154,20 @@ export function useLiveSession() {
           tools: [
             {
               functionDeclarations: [
+                {
+                  name: "changeOrbColor",
+                  description: "Changes the color of the central glowing orb indicator on the screen. Use this when the user asks you to change color to a specific color (like red, blue, green, purple, etc).",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      color: {
+                        type: Type.STRING,
+                        description: "The requested color (e.g., 'red', 'blue', 'green', 'purple', 'emerald', 'cyan', 'yellow', 'default')."
+                      }
+                    },
+                    required: ["color"]
+                  }
+                },
                 {
                   name: "rememberUserFact",
                   description: "Saves a personal fact, name, preference, or important detail from the conversation into Zoya's long-term memory so Zoya remembers it in future chats.",
@@ -250,7 +276,21 @@ export function useLiveSession() {
             const toolCall = message.toolCall;
             if (toolCall) {
               for (const call of toolCall.functionCalls) {
-                if (call.name === "rememberUserFact") {
+                if (call.name === "changeOrbColor") {
+                  const color = (call.args as any).color || "default";
+                  setOrbColor(color.toLowerCase());
+                  sessionPromise.then(session => {
+                    session.sendToolResponse({
+                      functionResponses: [
+                        {
+                          name: "changeOrbColor",
+                          response: { success: true, message: `Changed orb color to ${color}` },
+                          id: call.id
+                        }
+                      ]
+                    });
+                  });
+                } else if (call.name === "rememberUserFact") {
                   const fact = (call.args as any).fact;
                   if (fact) {
                     addMemoryItem(fact, "fact");
@@ -365,10 +405,13 @@ export function useLiveSession() {
               }
             }
           },
-          onclose: () => {
-            console.log("Live session closed");
+          onclose: (e: any) => {
+            console.log("Live session closed", e);
             setStatus("disconnected");
             audioStreamerRef.current?.stopRecording();
+            if (e && e.code !== 1000 && e.code !== 1005) {
+               setError(`Session closed automatically. Reason: ${e.reason || e.code || "Unknown"}`);
+            }
           },
           onerror: (err: any) => {
             console.error("Live session error:", err);
@@ -383,9 +426,10 @@ export function useLiveSession() {
         }
       });
 
-      const sessionPromise: Promise<any> = ai.live.connect(createSessionConfig("gemini-3.1-flash-live-preview"));
-
+      let sessionPromise = ai.live.connect(createSessionConfig("gemini-3.1-flash-live-preview"));
+      
       audioStreamerRef.current = new AudioStreamer((base64) => {
+        if (isMutedRef.current) return;
         sessionPromise.then((session) => {
           session.sendRealtimeInput({
             audio: { data: base64, mimeType: "audio/pcm;rate=16000" }
@@ -534,6 +578,9 @@ export function useLiveSession() {
     isListening,
     isScreenSharing,
     error,
+    orbColor,
+    isMuted,
+    toggleMute,
     voicePersona,
     setVoicePersona,
     connect,
@@ -543,3 +590,4 @@ export function useLiveSession() {
     sendImageFrame
   };
 }
+

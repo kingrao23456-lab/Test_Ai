@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  Brain, History, Trash2, Plus, Search, X, Check, Download, Sparkles, 
+  Brain, History, Trash2, Plus, Search, X, Check, Download, Upload, Sparkles, 
   Clock, FileText, UserCheck, Heart, MessageSquare, AlertTriangle, Copy, ChevronDown, ChevronUp
 } from "lucide-react";
 import { 
@@ -78,6 +78,40 @@ export function MemoryModal({ isOpen, onClose }: MemoryModalProps) {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = event.target?.result as string;
+        const data = JSON.parse(json);
+        if (data && Array.isArray(data.memories) && Array.isArray(data.chatLogs)) {
+          saveMemoryBank(data.memories);
+          saveChatHistory(data.chatLogs);
+          reloadData();
+          alert("Memory imported successfully!");
+        } else {
+          alert("Invalid backup file format.");
+        }
+      } catch (err) {
+        alert("Error parsing backup file.");
+      }
+    };
+    reader.readAsText(file);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleExportData = () => {
     const data = {
       memories: getMemoryBank(),
@@ -147,7 +181,7 @@ export function MemoryModal({ isOpen, onClose }: MemoryModalProps) {
 
           {/* Tab Switcher & Search Bar */}
           <div className="p-4 border-b border-white/10 bg-zinc-900/80 space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex rounded-xl bg-zinc-950 p-1 border border-white/10 w-full sm:w-auto">
                 <button
                   onClick={() => setActiveTab("memories")}
@@ -174,10 +208,26 @@ export function MemoryModal({ isOpen, onClose }: MemoryModalProps) {
                 </button>
               </div>
 
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar w-full sm:w-auto justify-start sm:justify-end">
+                <input
+                  type="file"
+                  accept=".json"
+                  ref={fileInputRef}
+                  onChange={handleImportData}
+                  className="hidden"
+                />
+                <button
+                  onClick={handleImportClick}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium flex items-center gap-1.5 border border-white/10 transition-colors shrink-0"
+                  title="Import memory backup"
+                >
+                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Import</span>
+                </button>
+
                 <button
                   onClick={handleExportData}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium flex items-center gap-1.5 border border-white/10 transition-colors"
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 text-xs font-medium flex items-center gap-1.5 border border-white/10 transition-colors shrink-0"
                   title="Export memory backup"
                 >
                   <Download className="w-3.5 h-3.5 text-cyan-400" />
@@ -186,7 +236,7 @@ export function MemoryModal({ isOpen, onClose }: MemoryModalProps) {
 
                 <button
                   onClick={handleClearAll}
-                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium flex items-center gap-1.5 border border-red-500/20 transition-colors"
+                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium flex items-center gap-1.5 border border-red-500/20 transition-colors shrink-0"
                   title="Clear all saved memory"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -449,3 +499,4 @@ export function MemoryModal({ isOpen, onClose }: MemoryModalProps) {
     </AnimatePresence>
   );
 }
+
