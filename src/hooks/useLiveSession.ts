@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { GoogleGenAI, LiveServerMessage, Modality, Type } from "@google/genai";
 import { AudioStreamer } from "../lib/audio-streamer";
 import { getMemoryBank, getChatHistory, addMemoryItem, addChatSession } from "../lib/memory";
+import { debugLog } from "../lib/debugLogger";
 
 const DEVELOPER_INSTRUCTION = `
 IMPORTANT INFORMATION ABOUT YOUR CREATOR:
@@ -249,9 +250,24 @@ export function useLiveSession() {
         callbacks: {
           onopen: () => {
             console.log(`Live session opened with model ${modelName}`);
+            debugLog("SESSION", "onopen fired, model:", modelName);
             setStatus("connected");
-            audioStreamerRef.current?.startRecording();
-            setIsListening(true);
+            audioStreamerRef.current?.startRecording()
+              .then(() => {
+                debugLog("SESSION", "Mic recording started successfully, setting isListening=true");
+                setIsListening(true);
+              })
+              .catch((err: any) => {
+                debugLog("SESSION_ERROR", "Mic failed to start:", err?.name, err?.message);
+                console.error("Failed to start microphone recording:", err);
+                setIsListening(false);
+                setStatus("error");
+                setError(
+                  err?.name === "NotAllowedError"
+                    ? "Microphone permission was not granted. Please allow microphone access in app settings and try again."
+                    : `Could not start microphone: ${err?.message || err}`
+                );
+              });
           },
           onmessage: async (message: LiveServerMessage) => {
             // Handle audio output

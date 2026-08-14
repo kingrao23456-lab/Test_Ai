@@ -1,4 +1,5 @@
 import { floatTo16BitPCM, pcm16ToBase64, base64ToPCM16, pcm16ToFloat32 } from "./audio-utils";
+import { debugLog } from "./debugLogger";
 
 export class AudioStreamer {
   private audioContext: AudioContext | null = null;
@@ -12,27 +13,73 @@ export class AudioStreamer {
   constructor(private onAudioData: (base64: string) => void) {}
 
   async startRecording() {
-    this.audioContext = new AudioContext({ sampleRate: 16000 });
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    this.source = this.audioContext.createMediaStreamSource(this.stream);
-    
-    // Using ScriptProcessorNode for simplicity in this environment
-    // Buffer size 2048 at 16kHz is ~128ms
-    this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
-    
-    this.processor.onaudioprocess = (e) => {
-      const inputData = e.inputBuffer.getChannelData(0);
-      const pcmData = floatTo16BitPCM(inputData);
-      const base64 = pcm16ToBase64(pcmData);
-      this.onAudioData(base64);
-    };
+    debugLog("MIC", "startRecording() called");
+    try {
+      this.audioContext = new AudioContext({ sampleRate: 16000 });
+      debugLog("MIC", "AudioContext created, state:", this.audioContext.state);
 
-    this.source.connect(this.processor);
-    this.processor.connect(this.audioContext.destination);
-    this.nextStartTime = this.audioContext.currentTime;
+      if (this.audioContext.state === "suspended") {
+        debugLog("MIC", "AudioContext was suspended, resuming...");
+        await this.audioContext.resume();
+        debugLog("MIC", "AudioContext state after resume:", this.audioContext.state);
+      }
+
+      debugLog("MIC", "Calling navigator.mediaDevices.getUserMedia({ audio: true })");
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const tracks = this.stream.getAudioTracks();
+      debugLog(
+        "MIC",
+        "getUserMedia SUCCESS. Track count:",
+        tracks.length,
+        "label:",
+        tracks[0]?.label,
+        "enabled:",
+        tracks[0]?.enabled,
+        "muted:",
+        tracks[0]?.muted,
+        "readyState:",
+        tracks[0]?.readyState
+      );
+
+      this.source = this.audioContext.createMediaStreamSource(this.stream);
+
+      // Using ScriptProcessorNode for simplicity in this environment
+      // Buffer size 2048 at 16kHz is ~128ms
+      this.processor = this.audioContext.createScriptProcessor(2048, 1, 1);
+
+      let chunkCount = 0;
+      this.processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        const pcmData = floatTo16BitPCM(inputData);
+        const base64 = pcm16ToBase64(pcmData);
+        this.onAudioData(base64);
+        chunkCount++;
+        if (chunkCount === 1) {
+          debugLog("MIC", "First audio chunk captured and sent — mic is actively streaming.");
+        }
+      };
+
+      this.source.connect(this.processor);
+      this.processor.connect(this.audioContext.destination);
+      this.nextStartTime = this.audioContext.currentTime;
+      debugLog("MIC", "Recording pipeline fully connected.");
+    } catch (err: any) {
+      debugLog(
+        "MIC_ERROR",
+        "startRecording FAILED. name:",
+        err?.name,
+        "message:",
+        err?.message,
+        "stack:",
+        err?.stack
+      );
+      throw err;
+    }
   }
 
   stopRecording() {
+    debugLog("MIC", "stopRecording() called");
     this.processor?.disconnect();
     this.source?.disconnect();
     this.stream?.getTracks().forEach(track => track.stop());

@@ -340,6 +340,33 @@ class ZoyaBridgePlugin : Plugin() {
         call.resolve(obj)
     }
 
+    // ---------- Debug log export ----------
+
+    @PluginMethod
+    fun saveDebugLog(call: PluginCall) {
+        val content = call.getString("content") ?: return call.reply(BridgeResult.failure("content is required"))
+        val filename = call.getString("filename") ?: "zoya_debug_log_${System.currentTimeMillis()}.txt"
+        try {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Download")
+            }
+            val uri = context.contentResolver.insert(
+                android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+            )
+            if (uri == null) {
+                return call.reply(BridgeResult.failure("Could not create file in Downloads"))
+            }
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                out.write(content.toByteArray(Charsets.UTF_8))
+            }
+            call.reply(BridgeResult.success("Saved", JSONObject().put("uri", uri.toString()).put("filename", filename)))
+        } catch (e: Exception) {
+            call.reply(BridgeResult.failure("Failed to save log: ${e.message}"))
+        }
+    }
+
     companion object {
         const val SCREEN_CAPTURE_REQUEST = 9821
     }
